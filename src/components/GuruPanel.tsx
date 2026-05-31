@@ -42,14 +42,53 @@ const GURUS: Record<string, any> = {
     ],
     sectors: {Tech:52,Comunicații:16,'Consum Disc.':15,Utilități:6,Altele:11},
   },
+  druckenmiller: {
+    name: 'Stanley Druckenmiller', fund: 'Duquesne Family Office', aum: '$3.38B', stocks: 70,
+    style: 'Macro · Growth · Zero losing years', performance: '+30% anual (30 ani, zero ani negativi)', emoji: '🦁', color: '#ff6b35',
+    note: 'Cel mai bun track record din istoria hedge fund-urilor. Q1 2026: 30 poziții noi, pivot spre Brazilia (EWZ) și biotech.',
+    holdings: [
+      {t:'NTRA', n:'Natera Inc',          w:18.1, b:'add'},
+      {t:'EWZ',  n:'iShares MSCI Brazil', w:8.7,  b:'new'},
+      {t:'INSM', n:'Insmed Inc',          w:5.6,  b:'trim'},
+      {t:'TSM',  n:'Taiwan Semiconductor',w:5.0,  b:'trim'},
+      {t:'RSP',  n:'Invesco S&P 500 EW',  w:4.7,  b:'trim'},
+      {t:'YPF',  n:'YPF SA (Argentina)',  w:4.4,  b:'add'},
+      {t:'GOOGL',n:'Alphabet Inc',        w:3.8,  b:'add'},
+      {t:'AA',   n:'Alcoa Corp',          w:2.9,  b:'add'},
+      {t:'SE',   n:'Sea Limited',         w:2.7,  b:'add'},
+      {t:'TEVA', n:'Teva Pharmaceutical', w:2.5,  b:'hold'},
+    ],
+    sectors: {Sănătate:30,'Piețe Emergente':22,Tech:15,Energie:10,Materiale:8,Altele:15},
+  },
+  griffin: {
+    name: 'Ken Griffin', fund: 'Citadel Advisors LLC', aum: '$618B', stocks: 12857,
+    style: 'Multi-strategy · Quant · Market Making', performance: '+19% anual (30+ ani)', emoji: '🦅', color: '#bf5af2',
+    note: '⚠️ Citadel 13F include atât hedge fund cât și Citadel Securities (market-making). Pozițiile de options/ETF sunt parțial inventar de trading, nu neapărat convicții pe termen lung.',
+    holdings: [
+      {t:'SPY',  n:'SPDR S&P 500 ETF',    w:8.2,  b:'hold'},
+      {t:'QQQ',  n:'Invesco QQQ Trust',   w:5.1,  b:'hold'},
+      {t:'NVDA', n:'NVIDIA Corp',         w:3.8,  b:'add'},
+      {t:'MSFT', n:'Microsoft Corp',      w:3.2,  b:'hold'},
+      {t:'AAPL', n:'Apple Inc',           w:2.9,  b:'hold'},
+      {t:'AMZN', n:'Amazon.com',          w:2.7,  b:'add'},
+      {t:'TSLA', n:'Tesla Inc',           w:2.4,  b:'hold'},
+      {t:'META', n:'Meta Platforms',      w:2.1,  b:'hold'},
+      {t:'GOOGL',n:'Alphabet Inc',        w:1.9,  b:'hold'},
+      {t:'BRK.B',n:'Berkshire Hathaway',  w:1.6,  b:'add'},
+    ],
+    sectors: {Tech:45,Financiar:20,'Consum Disc.':12,Sănătate:8,Industrie:7,Altele:8},
+  },
 }
 
 const OVERLAPS = [
-  {t:'AMZN',n:'Amazon',gurus:'Ackman + Tepper',conv:'Foarte Mare',note:'Ackman +19%, Tepper +98% Q1 2026'},
-  {t:'UBER',n:'Uber',gurus:'Ackman + Tepper',conv:'Mare',note:'Ambii au crescut în Q1'},
-  {t:'META',n:'Meta',gurus:'Ackman + Tepper',conv:'Medie',note:'Ambii au redus — atenție'},
-  {t:'MSFT',n:'Microsoft',gurus:'Ackman (nou)',conv:'Mare',note:'Poziție nouă $2.09B Q1'},
-  {t:'AAPL',n:'Apple',gurus:'Buffett',conv:'Mare',note:'#1 holding, dar redus în 2024'},
+  {t:'AMZN', n:'Amazon',    gurus:'Ackman + Tepper + Griffin',       conv:'Foarte Mare', note:'3 guru simultan — Ackman +19%, Tepper +98%, Griffin add Q1 2026'},
+  {t:'GOOGL', n:'Alphabet', gurus:'Tepper + Druckenmiller + Griffin', conv:'Foarte Mare', note:'Druckenmiller a adăugat în Q1, Tepper menține 8.38%'},
+  {t:'NVDA',  n:'NVIDIA',   gurus:'Tepper + Griffin',                conv:'Mare',        note:'Griffin add, Tepper a cumpărat — AI leadership indiscutabil'},
+  {t:'TSM',   n:'Taiwan Semi',gurus:'Tepper + Druckenmiller',         conv:'Mare',        note:'Ambii mențin — pariu pe AI chip supply chain'},
+  {t:'UBER',  n:'Uber',     gurus:'Ackman + Tepper',                 conv:'Mare',        note:'Ambii au crescut Q1 2026 — platform moat'},
+  {t:'MSFT',  n:'Microsoft',gurus:'Ackman + Griffin',                conv:'Mare',        note:'Ackman nou $2.09B, Griffin hold consistent'},
+  {t:'META',  n:'Meta',     gurus:'Ackman + Tepper + Griffin',       conv:'Medie',       note:'Ackman+Tepper au redus ușor, Griffin hold'},
+  {t:'AAPL',  n:'Apple',    gurus:'Buffett + Griffin',               conv:'Medie',       note:'Buffett #1 holding dar redus, Griffin hold'},
 ]
 
 const badgeStyle = (b: string) => {
