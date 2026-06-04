@@ -8,6 +8,7 @@ import MacroPanel from '../components/MacroPanel'
 import SignalsPanel from '../components/SignalsPanel'
 import GuruPanel from '../components/GuruPanel'
 import GemPanel from '../components/GemPanel'
+import EarlyWarningPanel from '../components/EarlyWarningPanel'
 
 const TABS = [
   { id: 'overview',  label: 'Overview' },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'signals',   label: 'Semnale' },
   { id: 'gurus',     label: '🧠 Guru Portfolios' },
   { id: 'gems',      label: '💎 Gem Finder' },
+  { id: 'warning',   label: '🚨 Early Warning' },
 ]
 
 export default function Dashboard() {
@@ -127,6 +129,7 @@ export default function Dashboard() {
         {tab === 'signals'   && <SignalsPanel market={market} sectors={sectors} />}
         {tab === 'gurus'     && <GuruPanel />}
         {tab === 'gems'      && <GemPanel />}
+        {tab === 'warning'   && <EarlyWarningPanel />}
       </main>
     </div>
   )
