@@ -70,7 +70,7 @@ export default function EarlyWarningPanel() {
 
   const signals = data?.signals || []
   const filtered = filter === 'all' ? signals : signals.filter((s: any) => s.sector === filter)
-  const sectors  = [...new Set(signals.map((s: any) => s.sector))].filter(Boolean)
+  const sectors = Array.from(new Set<string>(signals.map((s: any) => s.sector))).filter(Boolean)
 
   return (
     <div>
