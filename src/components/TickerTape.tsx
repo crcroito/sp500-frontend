@@ -21,20 +21,20 @@ export default function TickerTape() {
         { proName: 'NASDAQ:AMZN',     title: 'Amazon' },
         { proName: 'NASDAQ:TSLA',     title: 'Tesla' },
       ],
-      showSymbolLogo: false,
+      showSymbolLogo: true,
       colorTheme: 'dark',
       isTransparent: true,
-      displayMode: 'compact',
+      displayMode: 'adaptive',
       locale: 'en',
     })
     const container = document.getElementById('ticker-tape-widget')
-    if (container) container.appendChild(script)
+    if (container && !container.hasChildNodes()) container.appendChild(script)
   }, [])
 
   return (
-    <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', height: 36, overflow: 'hidden' }}>
-      <div className="tradingview-widget-container" style={{ height: 36 }}>
-        <div id="ticker-tape-widget" className="tradingview-widget-container__widget" />
+    <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', height: 46, overflow: 'hidden' }}>
+      <div className="tradingview-widget-container" style={{ height: 46 }}>
+        <div id="ticker-tape-widget" className="tradingview-widget-container__widget" style={{ height: 46 }} />
       </div>
     </div>
   )
