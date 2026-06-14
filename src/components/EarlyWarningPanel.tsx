@@ -5,36 +5,35 @@ import TVChart from './TVChart'
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const SIGNAL_META: Record<string, { icon: string; label: string; color: string }> = {
-  earnings_surprise:  { icon: '📈', label: 'Earnings Surprise',        color: '#00ff94' },
-  analyst_revision:   { icon: '🎯', label: 'Analyst Revision',         color: '#00d4ff' },
-  volume_anomaly:     { icon: '🔊', label: 'Volume Anomaly',           color: '#ffcc00' },
-  relative_strength:  { icon: '💪', label: 'Relative Strength',        color: '#ff7730' },
-  inst_accumulation:  { icon: '🏦', label: 'Institutional Accum.',     color: '#bf5af2' },
+  trend_strength:    { icon: '📈', label: 'Trend Strength',      color: '#00d4ff' },
+  volume_anomaly:    { icon: '🔊', label: 'Volume Anomaly',       color: '#ffcc00' },
+  relative_strength: { icon: '💪', label: 'Relative Strength',    color: '#ff7730' },
+  inst_accumulation: { icon: '🏦', label: 'Institutional Accum.', color: '#bf5af2' },
 }
 
 function scoreColor(s: number) {
-  if (s >= 5) return '#00ff94'
-  if (s >= 4) return '#00d4ff'
-  if (s >= 3) return '#ffcc00'
+  if (s >= 4) return '#00ff94'
+  if (s >= 3) return '#00d4ff'
+  if (s >= 2) return '#ffcc00'
   return '#5a7385'
 }
 
 function scoreLabel(s: number) {
-  if (s >= 5) return '🔥 MAXIM'
-  if (s >= 4) return '⚡ PUTERNIC'
-  if (s >= 3) return '👀 WATCH'
+  if (s >= 4) return '🔥 MAXIM'
+  if (s >= 3) return '⚡ PUTERNIC'
+  if (s >= 2) return '👀 WATCH'
   return 'SLAB'
 }
 
 export default function EarlyWarningPanel() {
-  const [data, setData]         = useState<any>(null)
-  const [loading, setLoading]   = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [selected, setSelected] = useState<any>(null)
-  const [email, setEmail]       = useState('')
+  const [data, setData]           = useState<any>(null)
+  const [loading, setLoading]     = useState(false)
+  const [scanning, setScanning]   = useState(false)
+  const [selected, setSelected]   = useState<any>(null)
+  const [email, setEmail]         = useState('')
   const [emailSent, setEmailSent] = useState(false)
-  const [minScore, setMinScore] = useState(4)
-  const [filter, setFilter]     = useState('all')
+  const [minScore, setMinScore]   = useState(3)
+  const [filter, setFilter]       = useState('all')
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -53,7 +52,6 @@ export default function EarlyWarningPanel() {
     setScanning(true)
     try {
       await fetch(`${API}/api/early-warning/scan-now`)
-      // Asteaptă 5s pentru background task
       setTimeout(() => { loadData(); setScanning(false) }, 5000)
     } catch (e) {
       setScanning(false)
@@ -76,17 +74,16 @@ export default function EarlyWarningPanel() {
     <div>
       {/* Header info */}
       <div style={{ background: 'rgba(255,64,96,0.05)', border: '1px solid rgba(255,64,96,0.2)', borderRadius: 6, padding: '12px 16px', marginBottom: 20, fontSize: 11, lineHeight: 1.8, color: 'var(--muted2)' }}>
-        <strong style={{ color: 'var(--red)' }}>🚨 Early Warning System</strong> — Scanează toate companiile din S&P 500 și identifică cele care aprind simultan mai multe semne de acumulare instituțională înainte ca piața să le descopere.
+        <strong style={{ color: 'var(--red)' }}>🚨 Early Warning System</strong> — Scanează companiile din S&P 500 cu market cap &gt;$30B și identifică cele care aprind simultan mai multe semne de acumulare instituțională înainte ca piața să le descopere.
         <br />
         <span style={{ color: 'var(--yellow)' }}>⚠️ Nu este recomandare de investiție. Fă research propriu.</span>
       </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Min score */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, color: 'var(--muted2)' }}>Semne minime:</span>
-          {[3, 4, 5].map(n => (
+          {[2, 3, 4].map(n => (
             <button key={n} onClick={() => setMinScore(n)} style={{
               padding: '6px 12px', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11,
               cursor: 'pointer', borderRadius: 4, border: '1px solid',
@@ -94,7 +91,7 @@ export default function EarlyWarningPanel() {
               background: minScore === n ? `${scoreColor(n)}18` : 'var(--surface)',
               color: minScore === n ? scoreColor(n) : 'var(--muted2)',
               fontWeight: minScore === n ? 700 : 400,
-            }}>{n}/5</button>
+            }}>{n}/4</button>
           ))}
         </div>
 
@@ -156,7 +153,9 @@ export default function EarlyWarningPanel() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
-          {data ? `Nu s-au găsit companii cu ${minScore}+ semne simultane. Încearcă cu ${minScore - 1} semne.` : 'Apasă "Scan Acum" pentru a porni scanarea.'}
+          {data
+            ? `Nu s-au găsit companii cu ${minScore}+ semne simultane. Încearcă cu ${minScore - 1} semne.`
+            : 'Apasă "Scan Acum" pentru a porni scanarea.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
@@ -168,14 +167,12 @@ export default function EarlyWarningPanel() {
                 borderLeft: `3px solid ${scoreColor(s.score)}` }}>
 
               <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 14, alignItems: 'center' }}>
-                {/* Rank */}
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 10, color: 'var(--muted2)' }}>#{i + 1}</div>
                   <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 26, fontWeight: 900, color: scoreColor(s.score), lineHeight: 1 }}>{s.score}</div>
                   <div style={{ fontSize: 8, color: 'var(--muted2)', letterSpacing: 1 }}>SEMNE</div>
                 </div>
 
-                {/* Info */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 16 }}>{s.ticker}</span>
@@ -184,7 +181,6 @@ export default function EarlyWarningPanel() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: scoreColor(s.score) }}>{scoreLabel(s.score)}</span>
                   </div>
 
-                  {/* Signal icons + notes */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {Object.entries(s.signals).map(([k, active]: any) => {
                       const meta = SIGNAL_META[k]
@@ -204,7 +200,6 @@ export default function EarlyWarningPanel() {
                     })}
                   </div>
 
-                  {/* Notes */}
                   <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {Object.entries(s.notes).map(([k, note]: any) => note ? (
                       <div key={k} style={{ fontSize: 10, color: 'var(--muted2)' }}>• {note}</div>
@@ -212,7 +207,6 @@ export default function EarlyWarningPanel() {
                   </div>
                 </div>
 
-                {/* Price + change */}
                 <div style={{ textAlign: 'right', minWidth: 80 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>${s.price}</div>
                   <div style={{ fontSize: 12, color: s.change_1d >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
@@ -227,7 +221,6 @@ export default function EarlyWarningPanel() {
                 </div>
               </div>
 
-              {/* Expanded chart */}
               {selected?.ticker === s.ticker && (
                 <div style={{ borderTop: '1px solid var(--border)' }}>
                   <TVChart symbol={`NASDAQ:${s.ticker}`} height={350} interval="D" studies={['STD;RSI', 'STD;MACD', 'STD;Volume']} />
@@ -244,9 +237,9 @@ export default function EarlyWarningPanel() {
           📧 Alertă Email Zilnică
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 14, lineHeight: 1.7 }}>
-          Primești automat un email în fiecare zi cu companiile care aprind <strong style={{ color: 'var(--accent)' }}>4-5 semne simultane</strong>.
+          Primești automat un email cu companiile care aprind <strong style={{ color: 'var(--accent)' }}>3-4 semne simultane</strong>.
           <br />
-          <span style={{ fontSize: 10 }}>Necesită configurare SMTP în Railway (Gmail App Password). Vezi instrucțiunile de mai jos.</span>
+          <span style={{ fontSize: 10 }}>Necesită configurare SMTP în Railway (Gmail App Password).</span>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
@@ -275,19 +268,17 @@ export default function EarlyWarningPanel() {
             ✅ Email trimis! Verifică inbox-ul (și spam).
           </div>
         )}
-
-        {/* SMTP Setup instructions */}
         <div style={{ marginTop: 16, padding: 14, background: 'var(--surface2)', borderRadius: 5, fontSize: 11, lineHeight: 1.8, color: 'var(--muted2)' }}>
           <strong style={{ color: 'var(--accent)' }}>⚙️ Setup Email Automat (Railway):</strong><br />
           1. Mergi la Railway → sp500-backend → <strong>Variables</strong><br />
-          2. Adaugă aceste variabile:<br />
+          2. Adaugă:<br />
           <div style={{ margin: '8px 0', padding: '8px 12px', background: 'var(--bg)', borderRadius: 4, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10 }}>
             SMTP_USER = emailul_tau@gmail.com<br />
             SMTP_PASS = parola_aplicatie_gmail<br />
             ALERT_EMAIL = emailul_tau@gmail.com
           </div>
-          3. <a href="https://myaccount.google.com/apppasswords" target="_blank" style={{ color: 'var(--accent)' }}>Generează App Password Gmail</a> (nu parola contului!)<br />
-          4. Redeploy Railway → emailul vine automat zilnic la ora 9:00
+          3. <a href="https://myaccount.google.com/apppasswords" target="_blank" style={{ color: 'var(--accent)' }}>Generează App Password Gmail</a><br />
+          4. Redeploy Railway → emailul vine automat zilnic
         </div>
       </div>
     </div>
