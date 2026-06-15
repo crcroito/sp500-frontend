@@ -4,11 +4,12 @@ import TVChart from './TVChart'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-const SIGNAL_META: Record<string, { icon: string; label: string; color: string }> = {
-  trend_strength:    { icon: '📈', label: 'Trend Strength',      color: '#00d4ff' },
-  volume_anomaly:    { icon: '🔊', label: 'Volume Anomaly',       color: '#ffcc00' },
-  relative_strength: { icon: '💪', label: 'Relative Strength',    color: '#ff7730' },
-  inst_accumulation: { icon: '🏦', label: 'Institutional Accum.', color: '#bf5af2' },
+// Paleta de culori pentru cei 4 piloni noi din backend
+const PILON_COLORS: Record<number, string> = {
+  1: '#00d4ff', // MA50 Breakout
+  2: '#ffcc00', // Volume Anomaly
+  3: '#ff7730', // Medium-Term Momentum
+  4: '#bf5af2', // Institutional Accumulation
 }
 
 function scoreColor(s: number) {
@@ -26,63 +27,95 @@ function scoreLabel(s: number) {
 }
 
 export default function EarlyWarningPanel() {
-  const [data, setData]           = useState<any>(null)
+  const [signals, setSignals]     = useState<any[]>([])
+  const [statusInfo, setStatusInfo] = useState<any>(null)
   const [loading, setLoading]     = useState(false)
   const [scanning, setScanning]   = useState(false)
   const [selected, setSelected]   = useState<any>(null)
-  const [email, setEmail]         = useState('')
-  const [emailSent, setEmailSent] = useState(false)
-  const [minScore, setMinScore]   = useState(3)
-  const [filter, setFilter]       = useState('all')
+  const [minScore, setMinScore]   = useState(2) // Schimbat la 2 implicit deoarece e pragul optim din backend
 
+  // 1. Verifică starea memoriei RAM din backend (/status)
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/status`)
+      if (res.ok) {
+        const statusData = await res.json()
+        setStatusInfo(statusData)
+      }
+    } catch (e) {
+      console.error("Eroare la verificarea statusului RAM:", e)
+    }
+  }, [])
+
+  // 2. Rulează scanarea peste datele din RAM (/scan)
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API}/api/early-warning?min_score=${minScore}`)
-      if (res.ok) setData(await res.json())
+      const res = await fetch(`${API}/scan?min_score=${minScore}`)
+      if (res.ok) {
+        const scanResults = await res.json()
+        setSignals(scanResults)
+      }
     } catch (e) {
-      console.error(e)
+      console.error("Eroare la rularea scanării:", e)
     }
     setLoading(false)
   }, [minScore])
 
-  useEffect(() => { loadData() }, [loadData])
+  // Monitorizare automată la inițializare
+  useEffect(() => {
+    checkStatus()
+    loadData()
+    // Verifică statusul din RAM la fiecare 10 secunde pentru a vedea progresul descărcării
+    const interval = setInterval(checkStatus, 10000)
+    return () => clearInterval(interval)
+  }, [checkStatus, loadData])
 
+  // Declanșator manual (Bypassează eroarea 404 și re-scanează RAM-ul local)
   const triggerScan = async () => {
     setScanning(true)
-    try {
-      await fetch(`${API}/api/early-warning/scan-now`)
-      setTimeout(() => { loadData(); setScanning(false) }, 5000)
-    } catch (e) {
-      setScanning(false)
-    }
+    await checkStatus()
+    await loadData()
+    setScanning(false)
   }
-
-  const sendEmail = async () => {
-    if (!email) return
-    try {
-      const res = await fetch(`${API}/api/early-warning/email?to=${encodeURIComponent(email)}`, { method: 'POST' })
-      if (res.ok) setEmailSent(true)
-    } catch (e) {}
-  }
-
-  const signals = data?.signals || []
-  const filtered = filter === 'all' ? signals : signals.filter((s: any) => s.sector === filter)
-  const sectors = Array.from(new Set<string>(signals.map((s: any) => s.sector))).filter(Boolean)
 
   return (
     <div>
+      {/* Indicator dinamic pentru starea bazei de date din RAM */}
+      {statusInfo && (
+        <div style={{
+          background: statusInfo.status === 'updating' ? 'rgba(255,204,0,0.1)' : 'rgba(0,255,148,0.1)',
+          border: `1px solid ${statusInfo.status === 'updating' ? '#ffcc00' : '#00ff94'}`,
+          borderRadius: 6, padding: '10px 14px', marginBottom: 16, fontSize: 12, display: 'flex', justifyContent: 'between', alignItems: 'center'
+        }}>
+          <div>
+            <span>Stare RAM S&P 500: </span>
+            <strong style={{ color: statusInfo.status === 'updating' ? '#ffcc00' : '#00ff94', textTransform: 'uppercase' }}>
+              {statusInfo.status === 'updating' ? '⏳ Se descarcă cele 65 de zile...' : '✅ GATA DE SCANARE'}
+            </strong>
+            {statusInfo.status === 'updating' && (
+              <span style={{ marginLeft: 8, color: 'var(--muted2)', fontSize: 11 }}>
+                (Se completează istoricul pe furiș pentru a proteja cheia Polygon. Nu închide serverul.)
+              </span>
+            )}
+          </div>
+          <div style={{ marginLeft: 'auto', fontWeight: 'bold' }}>
+            Companii active: {statusInfo.count}
+          </div>
+        </div>
+      )}
+
       {/* Header info */}
       <div style={{ background: 'rgba(255,64,96,0.05)', border: '1px solid rgba(255,64,96,0.2)', borderRadius: 6, padding: '12px 16px', marginBottom: 20, fontSize: 11, lineHeight: 1.8, color: 'var(--muted2)' }}>
-        <strong style={{ color: 'var(--red)' }}>🚨 Early Warning System</strong> — Scanează companiile din S&P 500 cu market cap &gt;$30B și identifică cele care aprind simultan mai multe semne de acumulare instituțională înainte ca piața să le descopere.
+        <strong style={{ color: 'var(--red)' }}>🚨 Early Warning System (Engine 65z RAM)</strong> — Scanează structural S&P 500 direct din memorie utilizând corelații macro și anomalii de volum instituțional pe o fereastră istorică stabilă.
         <br />
-        <span style={{ color: 'var(--yellow)' }}>⚠️ Nu este recomandare de investiție. Fă research propriu.</span>
+        <span style={{ color: 'var(--yellow)' }}>⚠️ Datele se actualizează automat în RAM la finalul fiecărei ședințe (ora 22:00 UTC). Fă research propriu.</span>
       </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10, color: 'var(--muted2)' }}>Semne minime:</span>
+          <span style={{ fontSize: 10, color: 'var(--muted2)' }}>Scor minim cerut:</span>
           {[2, 3, 4].map(n => (
             <button key={n} onClick={() => setMinScore(n)} style={{
               padding: '6px 12px', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11,
@@ -101,129 +134,101 @@ export default function EarlyWarningPanel() {
           border: '1px solid var(--accent)', background: 'rgba(0,212,255,0.08)',
           color: 'var(--accent)', fontWeight: 700,
         }}>
-          {scanning ? '⏳ Scanare...' : '🔍 Scan Acum'}
+          {scanning ? '⏳ Reîncărcare...' : '⚡ Scan Instant'}
         </button>
 
-        {data && (
+        {signals.length > 0 && (
           <span style={{ fontSize: 10, color: 'var(--muted2)', marginLeft: 'auto' }}>
-            {data.count} semnale din {data.scanned} companii ·{' '}
-            {data.scanned_at ? new Date(data.scanned_at).toLocaleTimeString('ro-RO') : ''}
+            S-au găsit {signals.length} companii care respectă criteriile ·{' '}
+            {signals[0]?.scanned_at ? new Date(signals[0].scanned_at).toLocaleTimeString('ro-RO') : ''}
           </span>
         )}
       </div>
 
-      {/* Sector filter */}
-      {sectors.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          <button onClick={() => setFilter('all')} style={{
-            padding: '5px 12px', fontSize: 10, cursor: 'pointer', borderRadius: 3,
-            border: '1px solid', fontFamily: 'IBM Plex Mono, monospace',
-            borderColor: filter === 'all' ? 'var(--accent)' : 'var(--border)',
-            background: filter === 'all' ? 'var(--accent)' : 'var(--surface)',
-            color: filter === 'all' ? 'var(--bg)' : 'var(--muted2)',
-          }}>Toate</button>
-          {sectors.map((s: any) => (
-            <button key={s} onClick={() => setFilter(s)} style={{
-              padding: '5px 12px', fontSize: 10, cursor: 'pointer', borderRadius: 3,
-              border: '1px solid', fontFamily: 'IBM Plex Mono, monospace',
-              borderColor: filter === s ? 'var(--accent)' : 'var(--border)',
-              background: filter === s ? 'rgba(0,212,255,0.08)' : 'var(--surface)',
-              color: filter === s ? 'var(--accent)' : 'var(--muted2)',
-            }}>{s}</button>
-          ))}
-        </div>
-      )}
-
-      {/* Signal legend */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        {Object.entries(SIGNAL_META).map(([k, v]) => (
-          <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--muted2)' }}>
-            <span>{v.icon}</span>
-            <span>{v.label}</span>
-          </div>
-        ))}
+      {/* Legendă Piloni noi */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', background: 'var(--surface)', padding: 10, borderRadius: 4, border: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 'bold', marginRight: 4 }}>PILONI TEHNICI ACTIVI:</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: PILON_COLORS[1] }}>📈 Breakout MA50</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: PILON_COLORS[2] }}>🔊 Anomalie Volum MA20</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: PILON_COLORS[3] }}>💪 Momentum (15z/30z)</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: PILON_COLORS[4] }}>🏦 Acumulare Smart Money</div>
       </div>
 
       {/* Results */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1,2,3,4,5].map(i => (
-            <div key={i} className="shimmer" style={{ height: 80, borderRadius: 6 }} />
+            <div key={i} className="shimmer" style={{ height: 80, borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)' }} />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--muted2)', fontSize: 13 }}>
-          {data
-            ? `Nu s-au găsit companii cu ${minScore}+ semne simultane. Încearcă cu ${minScore - 1} semne.`
-            : 'Apasă "Scan Acum" pentru a porni scanarea.'}
+      ) : signals.length === 0 ? (
+        <div className="card" style={{ padding: 32, textAlign: 'center', color: 'var(--muted2)', fontSize: 13, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}>
+          {statusInfo?.status === 'updating' 
+            ? 'Baza de date din RAM se construiește. În câteva minute primele companii care trec pragul de 55 de zile vor apărea aici...'
+            : `Nu s-au găsit companii din S&P 500 cu scorul minim de ${minScore}/4 în acest moment.`}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-          {filtered.map((s: any, i: number) => (
+          {signals.map((s: any, i: number) => (
             <div key={s.ticker} className="card"
               onClick={() => setSelected(selected?.ticker === s.ticker ? null : s)}
               style={{ cursor: 'pointer', transition: 'border-color 0.2s',
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
                 borderColor: selected?.ticker === s.ticker ? scoreColor(s.score) : 'var(--border)',
-                borderLeft: `3px solid ${scoreColor(s.score)}` }}>
+                borderLeft: `4px solid ${scoreColor(s.score)}` }}>
 
               <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '44px 1fr auto', gap: 14, alignItems: 'center' }}>
+                
+                {/* Scorul Central */}
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: 10, color: 'var(--muted2)' }}>#{i + 1}</div>
                   <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 26, fontWeight: 900, color: scoreColor(s.score), lineHeight: 1 }}>{s.score}</div>
-                  <div style={{ fontSize: 8, color: 'var(--muted2)', letterSpacing: 1 }}>SEMNE</div>
+                  <div style={{ fontSize: 8, color: 'var(--muted2)', letterSpacing: 0.5 }}>PILONI</div>
                 </div>
 
+                {/* Detalii Companie & Semnale text */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
-                    <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 16 }}>{s.ticker}</span>
-                    <span style={{ fontSize: 11, color: 'var(--muted2)' }}>{s.name}</span>
-                    <span style={{ fontSize: 9, padding: '1px 6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 2, color: 'var(--muted2)' }}>{s.sector}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: scoreColor(s.score) }}>{scoreLabel(s.score)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 17 }}>{s.ticker}</span>
+                    <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'bold' }}>{scoreLabel(s.score)}</span>
+                    <span style={{ fontSize: 9, padding: '1px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 2, color: 'var(--muted2)' }}>S&P 500</span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {Object.entries(s.signals).map(([k, active]: any) => {
-                      const meta = SIGNAL_META[k]
-                      if (!meta) return null
+                  {/* Afișarea dinamică a listei de motive primite de la backend */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {s.signals.map((signalText: string, idx: number) => {
+                      // Detectăm pilonul din text pentru a-i pune culoarea corectă
+                      let color = '#fff'
+                      let icon = '•'
+                      if (signalText.includes('MA50')) { color = PILON_COLORS[1]; icon = '📈'; }
+                      else if (signalText.includes('Volum')) { color = PILON_COLORS[2]; icon = '🔊'; }
+                      else if (signalText.includes('Momentum')) { color = PILON_COLORS[3]; icon = '💪'; }
+                      else if (signalText.includes('Acumulare')) { color = PILON_COLORS[4]; icon = '🏦'; }
+
                       return (
-                        <div key={k} title={s.notes[k] || meta.label}
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
-                            background: active ? `${meta.color}15` : 'var(--surface2)',
-                            border: `1px solid ${active ? meta.color + '40' : 'var(--border)'}`,
-                            borderRadius: 3, fontSize: 10,
-                            color: active ? meta.color : 'var(--muted)',
-                            opacity: active ? 1 : 0.4 }}>
-                          <span>{meta.icon}</span>
-                          <span style={{ fontSize: 9 }}>{meta.label}</span>
+                        <div key={idx} style={{ fontSize: 11, color: color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{icon}</span>
+                          <span>{signalText}</span>
                         </div>
                       )
                     })}
                   </div>
-
-                  <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    {Object.entries(s.notes).map(([k, note]: any) => note ? (
-                      <div key={k} style={{ fontSize: 10, color: 'var(--muted2)' }}>• {note}</div>
-                    ) : null)}
-                  </div>
                 </div>
 
-                <div style={{ textAlign: 'right', minWidth: 80 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>${s.price}</div>
-                  <div style={{ fontSize: 12, color: s.change_1d >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>
-                    {s.change_1d >= 0 ? '▲' : '▼'} {Math.abs(s.change_1d)}%
+                {/* Preț curent și variație zilnică */}
+                <div style={{ textAlign: 'right', minWidth: 90 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4, fontFamily: 'IBM Plex Mono, monospace' }}>${s.price}</div>
+                  <div style={{ fontSize: 12, color: s.change_percent >= 0 ? '#00ff94' : '#ff4060', fontWeight: 700 }}>
+                    {s.change_percent >= 0 ? '▲ +' : '▼ '} {s.change_percent}%
                   </div>
-                  <div style={{ fontSize: 10, color: 'var(--muted2)', marginTop: 2 }}>
-                    5z: <span style={{ color: s.change_5d >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                      {s.change_5d >= 0 ? '+' : ''}{s.change_5d}%
-                    </span>
-                  </div>
-                  {s.pe && <div style={{ fontSize: 10, color: 'var(--muted2)', marginTop: 2 }}>P/E: {s.pe}</div>}
+                  <div style={{ fontSize: 9, color: 'var(--muted2)', marginTop: 4 }}>Volum: {(s.volume / 1000000).toFixed(1)}M</div>
                 </div>
               </div>
 
+              {/* Graficul integrat TradingView la click */}
               {selected?.ticker === s.ticker && (
-                <div style={{ borderTop: '1px solid var(--border)' }}>
-                  <TVChart symbol={`NASDAQ:${s.ticker}`} height={350} interval="D" studies={['STD;RSI', 'STD;MACD', 'STD;Volume']} />
+                <div style={{ borderTop: '1px solid var(--border)', padding: 1 }}>
+                  <TVChart symbol={`NASDAQ:${s.ticker}`} height={380} interval="D" studies={['STD;RSI', 'STD;MACD', 'STD;Volume']} />
                 </div>
               )}
             </div>
@@ -231,55 +236,12 @@ export default function EarlyWarningPanel() {
         </div>
       )}
 
-      {/* Email section */}
-      <div className="card" style={{ padding: 20 }}>
-        <div style={{ fontSize: 9, color: 'var(--muted2)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14 }}>
-          📧 Alertă Email Zilnică
+      {/* Sectiunea Info / Sistem de Alerte */}
+      <div className="card" style={{ padding: 20, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, color: 'var(--muted2)', lineHeight: 1.6 }}>
+        <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8, color: 'var(--accent)', fontWeight: 'bold' }}>
+          💡 INFORMAȚII MOTOR ANALITIC
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 14, lineHeight: 1.7 }}>
-          Primești automat un email cu companiile care aprind <strong style={{ color: 'var(--accent)' }}>3-4 semne simultane</strong>.
-          <br />
-          <span style={{ fontSize: 10 }}>Necesită configurare SMTP în Railway (Gmail App Password).</span>
-        </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input
-            type="email"
-            placeholder="emailul@tau.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              color: 'var(--text)', padding: '8px 14px', borderRadius: 4,
-              fontFamily: 'IBM Plex Mono, monospace', fontSize: 12,
-              outline: 'none', minWidth: 260,
-            }}
-          />
-          <button onClick={sendEmail} disabled={!email || emailSent} style={{
-            padding: '8px 18px', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11,
-            cursor: email && !emailSent ? 'pointer' : 'default', borderRadius: 4,
-            border: '1px solid var(--green)', background: 'rgba(0,255,148,0.08)',
-            color: emailSent ? 'var(--muted2)' : 'var(--green)', fontWeight: 700,
-          }}>
-            {emailSent ? '✅ Trimis!' : '📤 Trimite Test'}
-          </button>
-        </div>
-        {emailSent && (
-          <div style={{ marginTop: 10, fontSize: 11, color: 'var(--green)' }}>
-            ✅ Email trimis! Verifică inbox-ul (și spam).
-          </div>
-        )}
-        <div style={{ marginTop: 16, padding: 14, background: 'var(--surface2)', borderRadius: 5, fontSize: 11, lineHeight: 1.8, color: 'var(--muted2)' }}>
-          <strong style={{ color: 'var(--accent)' }}>⚙️ Setup Email Automat (Railway):</strong><br />
-          1. Mergi la Railway → sp500-backend → <strong>Variables</strong><br />
-          2. Adaugă:<br />
-          <div style={{ margin: '8px 0', padding: '8px 12px', background: 'var(--bg)', borderRadius: 4, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10 }}>
-            SMTP_USER = emailul_tau@gmail.com<br />
-            SMTP_PASS = parola_aplicatie_gmail<br />
-            ALERT_EMAIL = emailul_tau@gmail.com
-          </div>
-          3. <a href="https://myaccount.google.com/apppasswords" target="_blank" style={{ color: 'var(--accent)' }}>Generează App Password Gmail</a><br />
-          4. Redeploy Railway → emailul vine automat zilnic
-        </div>
+        Sistemul rulează integral in-memory (RAM) pe serverul Railway. Acest lucru elimină complet interogările repetate la baza de date și oferă rezultate instantanee. Actualizarea bazei de date se face o singură dată pe zi, automat, la ora 22:00 UTC, preluând exclusiv pachetul aggregated final emis de Polygon API.
       </div>
     </div>
   )
