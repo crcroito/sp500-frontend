@@ -109,7 +109,7 @@ export default function EarlyWarningPanel() {
       <div style={{ background: 'rgba(255,64,96,0.05)', border: '1px solid rgba(255,64,96,0.2)', borderRadius: 6, padding: '12px 16px', marginBottom: 20, fontSize: 11, lineHeight: 1.8, color: 'var(--muted2)' }}>
         <strong style={{ color: 'var(--red)' }}>🚨 Early Warning System (Engine 65z RAM)</strong> — Scanează structural S&P 500 direct din memorie utilizând corelații macro și anomalii de volum instituțional pe o fereastră istorică stabilă.
         <br />
-        <span style={{ color: 'var(--yellow)' }}>⚠️ Datele se actualizează automat în RAM la finalul fiecărei ședințe (ora 22:00 UTC). Fă research propriu.</span>
+        <span style={{ color: 'var(--yellow)' }}>⚠️ Datele se actualizează automat în RAM în fiecare dimineață (ora 06:00 UTC), după ce Polygon finalizează datele ședinței anterioare. Fă research propriu.</span>
       </div>
 
       {/* Controls */}
@@ -241,7 +241,7 @@ export default function EarlyWarningPanel() {
         <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8, color: 'var(--accent)', fontWeight: 'bold' }}>
           💡 INFORMAȚII MOTOR ANALITIC
         </div>
-        Sistemul rulează integral in-memory (RAM) pe serverul Railway. Acest lucru elimină complet interogările repetate la baza de date și oferă rezultate instantanee. Actualizarea bazei de date se face o singură dată pe zi, automat, la ora 22:00 UTC, preluând exclusiv pachetul aggregated final emis de Polygon API.
+        Sistemul rulează integral in-memory (RAM) pe serverul Railway. Acest lucru elimină complet interogările repetate la baza de date și oferă rezultate instantanee. Actualizarea bazei de date se face o singură dată pe zi, automat, la ora 06:00 UTC, preluând exclusiv pachetul aggregated final emis de Polygon API pentru ultima ședință de tranzacționare încheiată.
       </div>
     </div>
   )
